@@ -2,17 +2,24 @@ use exitfailure::ExitFailure;
 use reqwest::Url;
 use serde_derive::{Deserialize, Serialize};
 use std::env;
-use std::thread::sleep;
-use std::time::{Duration, Instant};
+use tokio::time::{sleep, Duration};
+use dotenv::dotenv;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct CompanyQuote {
+    symbol: String,
     c: f64,
     h: f64,
     l: f64,
     o: f64,
     pc: f64,
-    t: i128,
+    t: u32,
+}
+
+struct QuoteHistory {
+    symbol: String,
+    price: f64,
+    timestamp: u32
 }
 
 impl CompanyQuote {
@@ -29,25 +36,30 @@ impl CompanyQuote {
     }
 }
 
+impl QuoteHistory {
+    fn new(quote: CompanyQuote, quote_history: &mut Vec<QuoteHistory>) {
+        let qh: QuoteHistory = QuoteHistory {
+            symbol: quote.symbol.to_string(),
+            price: quote.c,
+            timestamp: quote.t,
+        };
+
+        quote_history.push(qh);
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), ExitFailure> {
-    let api_key = "cgmqec1r01qhveusqoigcgmqec1r01qhveusqoj0".to_string();
+    dotenv().ok();
+    let api_key = std::env::var("API_KEY").expect("API key must be set in .env").to_string();
     let args: Vec<String> = env::args().collect();
-    let mut symbol: String = "AAPL".to_string();
-
-    if args.len() < 2 {
-        println!("Since you didn't specify a company symbol, it has defaulted to AAPL.");
-    } else {
-        symbol = args[1].clone();
-    }
-
-    let interval = Duration::from_secs(10);
-    let mut next_time = Instant::now() + interval;
+    let symbol: String = args.get(1).unwrap_or(&"AMC".to_string()).to_string();
+    let mut quote_history: Vec<QuoteHistory> = vec![];
 
     loop {
         let res = CompanyQuote::get(&symbol, &api_key).await?;
-        println!("{}'s current stock price: {}", symbol, res.c);
-        sleep(next_time - Instant::now());
-        next_time += interval;
+        QuoteHistory::new(res, &mut quote_history);
+        println!("{}'s current stock price: {} at time {}", symbol, res.c, res.t);
+        sleep(Duration::from_millis(10_000)).await;
     }
 }
