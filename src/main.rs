@@ -2,6 +2,8 @@ use exitfailure::ExitFailure;
 use reqwest::Url;
 use serde_derive::{Deserialize, Serialize};
 use std::env;
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct CompanyQuote {
@@ -39,8 +41,13 @@ async fn main() -> Result<(), ExitFailure> {
         symbol = args[1].clone();
     }
 
-    let res = CompanyQuote::get(&symbol, &api_key).await?;
-    println!("{}'s current stock price: {}", symbol, res.c);
+    let interval = Duration::from_secs(10);
+    let mut next_time = Instant::now() + interval;
 
-    Ok(())
+    loop {
+        let res = CompanyQuote::get(&symbol, &api_key).await?;
+        println!("{}'s current stock price: {}", symbol, res.c);
+        sleep(next_time - Instant::now());
+        next_time += interval;
+    }
 }
