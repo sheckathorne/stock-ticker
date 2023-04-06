@@ -37,7 +37,7 @@ impl CompanyQuote {
     }
 }
 
-fn init_config() -> App {
+fn init_app() -> App {
     dotenv().ok();
     App {
         api_key: std::env::var("API_KEY").expect("API key must be set in .env").to_string(),
@@ -48,14 +48,14 @@ fn init_config() -> App {
 
 #[tokio::main]
 async fn main() -> Result<(), ExitFailure> {
-    let mut config = init_config();
+    let mut app = init_app();
     let args: Vec<String> = env::args().collect();
     let symbol: String = args.get(1).unwrap_or(&"AAPL".to_string()).to_string();
 
 
     loop {
-        CompanyQuote::get(&symbol, &mut config).await?;
-        let latest_quote = config.quote_history.last().unwrap();
+        CompanyQuote::get(&symbol, &mut app).await?;
+        let latest_quote = app.quote_history.last().unwrap();
         println!("{}'s current stock price: {} at time {}", symbol, latest_quote.c, latest_quote.t);
         sleep(Duration::from_millis(5_000)).await;
     }
